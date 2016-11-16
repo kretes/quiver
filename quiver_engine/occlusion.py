@@ -1,9 +1,10 @@
 from imagenet_utils import decode_predictions
+import keras.backend as K
 import numpy as np
 
 def occlusion_positions(size, img_size, overlap=0.0):
     olf = 1 / (1 - overlap)
-    imgf = int(np.ceil(img_size / size))
+    imgf = int(np.ceil(img_size / float(size)))
     return [int(i * size * (1 - overlap)) for i in range(int(olf * imgf)) if int(i * size * (1 - overlap)) < img_size]
 
 def generate_img_with_occlusion(img,x1,x2,y1,y2,occlusion_val=0):
@@ -20,11 +21,11 @@ def occlude_patches_and_predict(model, img,occ_size_w,occ_size_h,overlap=0.0):
             decoded = decode_predictions(pred)[0]
             yield({'pred':decoded,'x':x,'y':y})
 
-def occlude_and_predict(model,image_for_model):
+def occlude_and_predict(model,image_for_model,no_of_occlusions,overlap):
     img = image_for_model[0]
-    occ_size_w = int(np.floor(img.shape[0]/3))
-    occ_size_h = int(np.floor(img.shape[1]/3))
-    occluded_predictions = list(occlude_patches_and_predict(model,img,occ_size_w,occ_size_h,0.5))
+    occ_size_w = int(np.ceil(img.shape[0]/float(no_of_occlusions)))
+    occ_size_h = int(np.ceil(img.shape[1]/float(no_of_occlusions)))
+    occluded_predictions = list(occlude_patches_and_predict(model,img,occ_size_w,occ_size_h,overlap))
     baseline_pred = decode_predictions(model.predict(image_for_model))[0]
     prediction_diffs = [predictions_diff_top(baseline_pred, occluded_prediction['pred']) for occluded_prediction in occluded_predictions]
     results_diffs = [{'x': r['x'], 'y': r['y'], 'diff': diff} for r, diff in zip(occluded_predictions, prediction_diffs)]
@@ -35,8 +36,8 @@ def generate_mask(x_y_and_diff,width,height,occ_size_w,occ_size_h):
     for occlusion_result in x_y_and_diff:
         y = occlusion_result['y']
         x = occlusion_result['x']
-        if (occlusion_result['diff'] > 0):
-            mask[y:y + occ_size_h, x:x + occ_size_w, :] += occlusion_result['diff']
+        mask[y:y + occ_size_h, x:x + occ_size_w, :] += occlusion_result['diff']
+    mask = mask.clip(0)
     return mask * (1.0 / mask.max())
 
 def predictions_diff_top(pred_1,pred_2):

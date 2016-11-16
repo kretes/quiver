@@ -18,9 +18,10 @@ from gevent.wsgi import WSGIServer
 from scipy.misc import imsave
 
 from imagenet_utils import decode_predictions
-from util import deprocess_image, load_img, get_json
+from util import deprocess_image, load_img, load_img_scaled, get_json
 from layer_result_generators import get_outputs_generator
 from occlusion import occlude_and_predict
+
 
 def get_app(model, temp_folder='./tmp', input_folder='./'):
     get_evaluation_context = get_evaluation_context_getter()
@@ -68,13 +69,13 @@ def get_app(model, temp_folder='./tmp', input_folder='./'):
     def get_config():
         return jsonify(json.loads(model.to_json()))
 
-    @app.route('/occlusion/<input_path>')
-    def get_occlusion(input_path):
-        input_img = load_img(input_path, single_input_shape)
-        filename = get_output_name(temp_folder, 'occlusion', input_path, 0)
+    @app.route('/occlusion/<input_path>/<no_of_occlusions>/<overlap>')
+    def get_occlusion(input_path,no_of_occlusions,overlap):
+        input_img = load_img_scaled(input_path, single_input_shape)
+        filename = get_output_name(temp_folder, 'occlusion', input_path, "%s_%s" % (no_of_occlusions,overlap))
 
         with get_evaluation_context():
-            occluded_mask = occlude_and_predict(model,input_img)
+            occluded_mask = occlude_and_predict(model,input_img,int(no_of_occlusions),float(overlap))
             imsave(filename,occluded_mask)
 
         return jsonify(filename)
