@@ -13,7 +13,7 @@ from flask_cors import CORS
 from gevent.wsgi import WSGIServer
 
 from quiver_engine.util import (
-    load_img, safe_jsonify, decode_predictions,
+    load_img, load_img_scaled, safe_jsonify, decode_predictions,
     get_input_config, get_evaluation_context,
     validate_launch
 )
@@ -22,7 +22,7 @@ from quiver_engine.file_utils import list_img_files
 from quiver_engine.vis_utils import save_layer_outputs
 
 
-def get_app(model, classes, top, html_base_dir, temp_folder='./tmp', input_folder='./'):
+def get_app(model, classes, top, html_base_dir, temp_folder='./tmp', input_folder='./', img_scaled=False):
     '''
     The base of the Flask application to be run
     :param model: the model to show
@@ -46,6 +46,9 @@ def get_app(model, classes, top, html_base_dir, temp_folder='./tmp', input_folde
         Static Routes
     '''
 
+    load_img_function = load_img
+    if img_scaled:
+        load_img_function = load_img_scaled
 
     @app.route('/')
     def home():
@@ -88,7 +91,7 @@ def get_app(model, classes, top, html_base_dir, temp_folder='./tmp', input_folde
     def get_layer_outputs(layer_name, input_path):
         return jsonify(
             save_layer_outputs(
-                load_img(
+                load_img_function(
                     join(abspath(input_folder), input_path),
                     single_input_shape,
                     grayscale=input_channels == 1
@@ -106,7 +109,7 @@ def get_app(model, classes, top, html_base_dir, temp_folder='./tmp', input_folde
             return safe_jsonify(
                 decode_predictions(
                     model.predict(
-                        load_img(
+                        load_img_function(
                             join(abspath(input_folder), input_path),
                             single_input_shape,
                             grayscale=(input_channels == 1)
@@ -125,7 +128,7 @@ def run_app(app, port=5000):
     webbrowser.open_new('http://localhost:' + str(port))
     http_server.serve_forever()
 
-def launch(model, classes=None, top=5, temp_folder='./tmp', input_folder='./', port=5000, html_base_dir=None):
+def launch(model, classes=None, top=5, temp_folder='./tmp', input_folder='./', port=5000, html_base_dir=None, img_scaled=False):
     os.system('mkdir -p %s' % temp_folder)
 
     html_base_dir = html_base_dir if html_base_dir is not None else dirname(abspath(__file__))
@@ -137,7 +140,8 @@ def launch(model, classes=None, top=5, temp_folder='./tmp', input_folder='./', p
             model, classes, top,
             html_base_dir=html_base_dir,
             temp_folder=temp_folder,
-            input_folder=input_folder
+            input_folder=input_folder,
+            img_scaled=img_scaled
         ),
         port
     )

@@ -69,7 +69,10 @@ This will launch the visualization at `localhost:5000`
         input_folder='./',
 
         # the localhost port the dashboard is to be served on
-        port=5000
+        port=5000,
+
+	# whether your network expects pixels to be scaled to [0,1] or not
+	img_scaled=True
     )
 ```
 
