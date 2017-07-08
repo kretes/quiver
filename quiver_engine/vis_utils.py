@@ -48,12 +48,7 @@ def save_layer_outputs(input_img, model, layer_name, temp_folder, input_path):
                     for channel in range(0, prev_layer_outputs.shape[2])
                 ]
 
-
-
         layer_outputs = get_outputs_generator(model, layer_name)(input_img)[0]
-        if K.backend() == 'theano':
-            #correct for channel location difference betwen TF and Theano
-            layer_outputs = np.rollaxis(layer_outputs, 0, 3)
 
         return [
             save_layer_img(
